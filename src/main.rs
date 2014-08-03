@@ -1,6 +1,6 @@
-use grammar::l0::{Noun, Verb, Pronoun, Determiner, S, ProNP, DetNomNP, Nominal, VP};
+use gram::l0::{Noun, Verb, Pronoun, Determiner, S, ProNP, DetNomNP, Nominal, VP};
 
-mod grammar;
+mod gram;
 
 fn main() {
     let nouns = [Noun("morning"), Noun("flight")];

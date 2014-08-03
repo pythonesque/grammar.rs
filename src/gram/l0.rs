@@ -158,11 +158,7 @@ impl<'dict, 'tree> fmt::LowerExp for VP<'dict, 'tree> {
             Some(np) => try!(write!(f, " {:e}", np)),
             None => ()
         }
-        match self.pp {
-            Some(pp) => try!(write!(f, " {:e}", pp)),
-            None => ()
-        }
-        Ok(())
+        self.pp.map_or(Ok(()), |pp| write!(f, " {:e}", pp))
     }
 }
 
