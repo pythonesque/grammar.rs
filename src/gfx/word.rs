@@ -37,14 +37,14 @@ impl WordContext {
     }
 }
 
-pub struct WordBox<'dict, 'tree> {
+pub struct WordBox<'tree> {
     ctx: ImageColorContext<'tree, Texture>,
     //word: &'dict str,
     //texture: Box<Texture>,
 }
 
-impl<'dict, 'tree> WordBox<'dict, 'tree> {
-    pub fn make<'dict, 'tree>(ctx: &Context, word_ctx: &'tree WordContext, word: &'dict str) -> WordBox<'dict, 'tree> {
+impl<'tree> WordBox<'tree> {
+    pub fn make<'dict, 'tree>(ctx: &Context, word_ctx: &'tree WordContext, word: &'dict str) -> WordBox<'tree> {
         let /*mut*/ x = 0;
         let /*mut*/ y = 0;
         /*for ch in word.chars() 

@@ -30,13 +30,14 @@ use graphics::{
 mod gram;
 mod gfx;
 
-pub struct App {
+pub struct App<'a> {
     gl: Gl,       // OpenGL drawing backend.
     rotation: f64, // Rotation for the square.
-    wc: WordContext,
+    wc: &'a WordContext,
+    wb: Option<WordBox<'a>>,
 }
 
-impl <W: GameWindow> Game<W> for App {
+impl <'a, W: GameWindow> Game<W> for App<'a> {
     fn render(&mut self, _: &mut W, args: &RenderArgs) {
         // Set up a context to draw into.
         let context = &Context::abs(args.width as f64, args.height as f64);
@@ -53,7 +54,17 @@ impl <W: GameWindow> Game<W> for App {
             .draw(&mut self.gl);
 
 //        let rect = context.rect(0.0, 1.0, 0.0, 1.0);
-        let ctx = WordBox::make(&context.trans(0.0, 100.0), &self.wc, "test");
+
+        //let ctx = self.wb.unwrap_or_else( || WordBox::make(&context.trans(0.0, 100.0), &self.wc, "test"));
+        //let ctx = WordBox::make(&context.trans(0.0, 100.0), self.wc, "test");
+        let ctx = match self.wb {
+            Some(ctx) => ctx,
+            None => {
+                let wb = WordBox::make(&context.trans(0.0, 100.0), self.wc, "test");
+                self.wb = Some(wb);
+                self.wb.unwrap()
+            }
+        };
         ctx.draw(&mut self.gl);
     }
 
@@ -92,6 +103,7 @@ fn main() {
     };
 
     // Create a new game and run it.
-    let mut app = App { gl: Gl::new(), rotation: 0.0, wc: WordContext::make() };
+    let wc = WordContext::make();
+    let mut app = App { gl: Gl::new(), rotation: 0.0, wc: &wc, wb: None };
     app.run(&mut window, &game_iter_settings);
 }
