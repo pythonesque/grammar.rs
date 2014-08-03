@@ -3,3 +3,23 @@
 name = "grammar"
 version = "0.1.0"
 authors = [ "pythonesque@gmail.com" ]
+
+[dependencies.piston]
+
+git = "https://github.com/PistonDevelopers/piston.git"
+
+[dependencies.glfw_game_window]
+
+git = "https://github.com/PistonDevelopers/glfw_game_window.git"
+
+[dependencies.graphics]
+
+git = "https://github.com/PistonDevelopers/rust-graphics.git"
+
+[dependencies.opengl_graphics]
+
+git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+
+[dependencies.freetype-rs]
+
+git = "https://github.com/PistonDevelopers/freetype-rs.git"
