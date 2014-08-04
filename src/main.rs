@@ -12,9 +12,11 @@ use opengl_graphics::Gl;
 
 use piston::{
     Game,
-    GameWindow,
+    GameIterator,
     GameWindowSettings,
     GameIteratorSettings,
+    Render,
+    Update,
     RenderArgs,
     UpdateArgs
 };
@@ -33,12 +35,12 @@ mod gfx;
 pub struct App<'a> {
     gl: Gl,       // OpenGL drawing backend.
     rotation: f64, // Rotation for the square.
-    wc: &'a WordContext,
+    wc: &'a WordContext<'a>,
     wb: Option<WordBox<'a>>,
 }
 
-impl <'a, W: GameWindow> Game<W> for App<'a> {
-    fn render(&mut self, _: &mut W, args: &RenderArgs) {
+impl<'a> App<'a> {
+    fn render(&mut self, args: &RenderArgs) {
         // Set up a context to draw into.
         let context = &Context::abs(args.width as f64, args.height as f64);
         // Clear the screen.
@@ -53,22 +55,18 @@ impl <'a, W: GameWindow> Game<W> for App<'a> {
             .trans(-25.0, -25.0)
             .draw(&mut self.gl);
 
-//        let rect = context.rect(0.0, 1.0, 0.0, 1.0);
-
-        //let ctx = self.wb.unwrap_or_else( || WordBox::make(&context.trans(0.0, 100.0), &self.wc, "test"));
-        //let ctx = WordBox::make(&context.trans(0.0, 100.0), self.wc, "test");
         let ctx = match self.wb {
-            Some(ctx) => ctx,
+            Some(ref ctx) => ctx,
             None => {
                 let wb = WordBox::make(&context.trans(0.0, 100.0), self.wc, "test");
                 self.wb = Some(wb);
-                self.wb.unwrap()
+                self.wb.as_ref().unwrap()
             }
         };
         ctx.draw(&mut self.gl);
     }
 
-    fn update(&mut self, _: &mut W, args: &UpdateArgs) {
+    fn update(&mut self, args: &UpdateArgs) {
         // Rotate 2 radians per second.
         self.rotation += 2.0 * args.dt;
     }
@@ -103,7 +101,13 @@ fn main() {
     };
 
     // Create a new game and run it.
-    let wc = WordContext::make();
-    let mut app = App { gl: Gl::new(), rotation: 0.0, wc: &wc, wb: None };
-    app.run(&mut window, &game_iter_settings);
+    let mut wc = WordContext::make();
+    let mut app = App { gl: Gl::new(), rotation: 0.0, wc: &mut wc, wb: None };
+    for mut e in GameIterator::new(&mut window, &game_iter_settings) {
+        match e {
+            Render(ref mut args) => { app.render(args); },
+            Update(ref mut args) => { app.update(args); }
+            _ => (),
+        }
+    }
 }
