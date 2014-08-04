@@ -13,6 +13,7 @@ use opengl_graphics::{
 };
 use std::cell::UnsafeCell;
 use std::collections::hashmap::HashMap;
+use std::kinds::marker;
 
 struct Letter {
     texture: Texture,
@@ -24,6 +25,7 @@ struct Letter {
 pub struct WordContext<'dict> {
     face: ft::Face,
     letters: UnsafeCell<HashMap<char, Letter>>,
+    marker: marker::NoShare
 }
 
 impl<'dict> WordContext<'dict> {
@@ -35,6 +37,7 @@ impl<'dict> WordContext<'dict> {
         WordContext {
             face: face,
             letters: UnsafeCell::new(HashMap::new()),
+            marker: marker::NoShare,
         }
     }
 
