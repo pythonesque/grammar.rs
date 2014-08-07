@@ -1,42 +1,60 @@
-extern crate graphics;
+#![feature(unsafe_destructor)]
+
+extern crate arena;
 extern crate freetype;
-extern crate piston;
 extern crate glfw_game_window;
+extern crate graphics;
+extern crate nalgebra;
+extern crate nphysics = "nphysics2df32";
+extern crate ncollide = "ncollide2df32";
 extern crate opengl_graphics;
+extern crate piston;
 
-use gram::l0::{Noun, Verb, Pronoun, Determiner, S, ProNP, DetNomNP, Nominal, VP};
 use gfx::word::{WordBox, WordContext};
-
 use glfw_game_window::GameWindowGLFW;
+use gram::l0::{Noun, Verb, Pronoun, Determiner, S, ProNP, DetNomNP, Nominal, VP};
+use graphics::{
+    AddColor,
+    AddSquareBorder,
+    AddLine,
+    Context,
+    Draw,
+};
+use nalgebra::na::{Vec2, Translation};
+use ncollide::geom::Plane;
+use nphysics::object::RigidBody;
+use nphysics::world::World;
 use opengl_graphics::Gl;
-
 use piston::{
     Game,
     GameIterator,
     GameWindowSettings,
     GameIteratorSettings,
+    KeyPress,
     Render,
     Update,
+    KeyPressArgs,
     RenderArgs,
     UpdateArgs
 };
-
-use graphics::{
-    Context,
-    AddRectangle,
-    AddColor,
-    Draw,
-    RelativeTransform2d,
-};
+use piston::keyboard;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 mod gram;
 mod gfx;
 
+static meter: f64 = 32f64; /* 32 px / meter */
+static width: f32 = 40.0; /* 40 m wide */
+static height: f32 = 25.0; /* 25 m tall */
+static width_px: u32 = (width as f64 * meter) as u32;
+static height_px: u32 = (height as f64 * meter) as u32;
+
 pub struct App<'a> {
     gl: Gl,       // OpenGL drawing backend.
-    rotation: f64, // Rotation for the square.
-    wc: &'a WordContext<'a>,
-    wb: Option<WordBox<'a>>,
+    wc: &'a WordContext<'static, 'a>,
+    world: World,
+    wb: Vec<WordBox<'a>>,
 }
 
 impl<'a> App<'a> {
@@ -45,30 +63,36 @@ impl<'a> App<'a> {
         let context = &Context::abs(args.width as f64, args.height as f64);
         // Clear the screen.
         context.rgba(0.0,1.0,0.0,1.0).draw(&mut self.gl);
-
-        // Draw a box rotating around the middle of the screen.
+        // Draw the ground
         context
-            .trans((args.width / 2) as f64, (args.height / 2) as f64)
-            .rot_rad(self.rotation)
-            .rect(0.0, 0.0, 50.0, 50.0)
-            .rgba(1.0, 0.0, 0.0,1.0)
-            .trans(-25.0, -25.0)
+            .line(0.0, height_px as f64, width_px as f64, height_px as f64)
+            .square_border_width(1.0)
+            .rgba(0.0, 0.0, 0.0, 1.0)
             .draw(&mut self.gl);
+        for ctx in self.wb.iter() {
+            ctx.draw(&mut self.gl, meter);
+        }
+    }
 
-        let ctx = match self.wb {
-            Some(ref ctx) => ctx,
-            None => {
-                let wb = WordBox::make(&context.trans(0.0, 100.0), self.wc, "test");
-                self.wb = Some(wb);
-                self.wb.as_ref().unwrap()
-            }
-        };
-        ctx.draw(&mut self.gl);
+    fn keypress(&mut self, args: &KeyPressArgs) {
+        match args.key {
+            keyboard::Space => {
+                let context = &Context::abs(width_px as f64, height_px as f64);
+                let wb = WordBox::make(
+                    context,
+                    self.wc,
+                    &mut self.world,
+                    meter,
+                    "supercallafragallistic",
+                );
+                self.wb.push(wb);
+            },
+            _ => (),
+        }
     }
 
     fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        self.rotation += 2.0 * args.dt;
+        self.world.step(args.dt as f32);
     }
 }
 
@@ -88,9 +112,9 @@ fn main() {
     let mut window = GameWindowGLFW::new(
         GameWindowSettings {
             title: "Hello Piston".to_string(),
-            size: [800, 800],
+            size: [width_px, height_px],
             fullscreen: false,
-            exit_on_esc: true
+            exit_on_esc: true,
         }
     );
 
@@ -100,13 +124,34 @@ fn main() {
         max_frames_per_second: 60
     };
 
-    // Create a new game and run it.
+    // World
+    let mut world = World::new();
+    world.set_gravity(Vec2::new(0.0f32, 9.81));
+    // Word boxes
+    let wb = Vec::new();
+    // Ground
+    let mut rb = RigidBody::new_static(Plane::new(Vec2::new(0f32, -1.0)), 0.3, 0.6);
+    rb.append_translation(&Vec2::new(0.0, height));
+    let body = Rc::new(RefCell::new(rb));
+    world.add_body(body.clone());
+    // Wall
+    let rb = RigidBody::new_static(Plane::new(Vec2::new(1.0, 0f32)), 0.3, 0.6);
+    let body = Rc::new(RefCell::new(rb));
+    world.add_body(body.clone());
+    // Word context
     let mut wc = WordContext::make();
-    let mut app = App { gl: Gl::new(), rotation: 0.0, wc: &mut wc, wb: None };
+    // Create a new game and run it.
+    let mut app = App {
+        gl: Gl::new(),
+        world: world,
+        wc: &mut wc,
+        wb: wb,
+    };
     for mut e in GameIterator::new(&mut window, &game_iter_settings) {
         match e {
-            Render(ref mut args) => { app.render(args); },
-            Update(ref mut args) => { app.update(args); }
+            Render(ref mut args) => { app.render(args) },
+            Update(ref mut args) => { app.update(args) },
+            KeyPress(ref mut args) => { app.keypress(args) },
             _ => (),
         }
     }
